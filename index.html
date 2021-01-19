@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Малювання графіків</title>
+  <link rel="stylesheet" href="./assets/style.css">
+  
+</head>
+<body>
+  <main>
+    <div class="left-sight">
+      <div class="canvas-wrapper">
+        <canvas id="canvas"></canvas>
+      </div>
+      <div class="layers">
+        
+      </div>
+    </div>
+    <div class="instrument-panel">
+      <button class="btn add add-point">Додати <b>точку</b> на полотно</button>
+      <button class="btn add add-line">Додати <b>лінію</b> на полотно</button>
+      <button class="btn add add-circle">Додати <b>коло</b> на полотно</button>
+      <button class="btn add add-ellipse">Додати <b>еліпс</b> на полотно</button>
+      <button class="btn add add-sector">Додати <b>сектор</b> на полотно</button>
+      <button class="btn add add-parabola">Додати <b>параболу</b> на полотно</button>
+      <button class="btn add add-hiperbola">Додати <b>гіперболу</b> на полотно</button>
+      <p>Обрати колір для наступної фігури: <input  type="color" id="color-picker"></p>
+    </div>
+  </main>
+
+  <div class="modal hidden point-modal">
+    <div class="modal-body">
+      <div class="modal-title">Побудова точки</div>
+      <div class="modal-content">
+        <div class="modal-inputs-wrapper">
+          <input name= "real" type="number" class="modal-input" placeholder="Введіть a">   
+          <input name= "imagine" type="number" class="modal-input" placeholder="Введіть b">   
+          <p class="modal-example">z = a + b*i</p>
+        </div>
+        <button class="btn apply point-modal_apply">Побудувати</button>   
+      </div>
+    </div>
+    <button class="btn close point-modal_close"> &times; </button>
+  </div>
+
+  <div class="modal hidden line-modal">
+    <div class="modal-body">
+      <div class="modal-title">Побудова лінії</div>
+      <div class="modal-content">
+        <div class="modal-inputs-wrapper">
+          <input name= "real1" type="number" class="modal-input" placeholder="Введіть Re(z1)">   
+          <input name= "imagine1" type="number" class="modal-input" placeholder="Введіть Im(z1)">
+          <input name= "real2" type="number" class="modal-input" placeholder="Введіть Re(z2)">   
+          <input name= "imagine2" type="number" class="modal-input" placeholder="Введіть Im(z2)">
+          <input name= "showEndBegin"    type="checkbox" class="hidden" id="aditionalpointsline1">
+          <label class="modal-checkbox" for="aditionalpointsline1">
+            Відображати точки початку та кінця: 
+            <span class="no">ні</span>
+            <span class="yes">так</span>
+          </label>
+          <p class="modal-example">z = a + b*i</p>
+        </div>
+        <button class="btn apply line-modal_apply">Побудувати</button>   
+      </div>
+    </div>
+    <button class="btn close line-modal_close"> &times; </button>
+  </div>
+
+  <div class="modal  hidden circle-modal">
+    <div class="modal-body">
+      <div class="modal-title">Побудова кола</div>
+      <div class="modal-content">
+        <div class="modal-inputs-wrapper">
+          <input name= "real"    type="number"    class="modal-input" placeholder="Введіть Re(z0)">   
+          <input name= "imagine" type="number" class="modal-input" placeholder="Введіть Im(z0)">   
+          <input name= "radius"  type="number"  class="modal-input" placeholder="Введіть R">
+          <input name= "fill"    type="checkbox" class="hidden" id="fillcircle">
+          <label class="modal-checkbox" for="fillcircle">
+            Заповненювати коло: 
+            <span class="no">ні</span>
+            <span class="yes">так</span>
+          </label>
+          <p class="modal-example">| z - z<span class="small">0</span> | = R</p>
+        </div>
+        <button class="btn apply circle-modal_apply">Побудувати</button>   
+      </div>
+    </div>
+    <button class="btn close circle-modal_close"> &times; </button>
+  </div>
+  <div class="modal  hidden ellipse-modal">
+    <div class="modal-body">
+      <div class="modal-title">Побудова еліпса</div>
+      <div class="modal-content">
+        <div class="modal-inputs-wrapper">
+          <input name= "real1"    type="number"    class="modal-input" placeholder="Введіть Re(F1)">   
+          <input name= "imagine1" type="number"    class="modal-input" placeholder="Введіть Im(F1)">   
+          <input name= "real2"    type="number"    class="modal-input" placeholder="Введіть Re(F2)">
+          <input name= "imagine2" type="number"    class="modal-input" placeholder="Введіть Im(F2)">
+          <input name= "vertex" type="number"    class="modal-input" placeholder="Введіть вісь">
+          <input name= "covertex" type="number"    class="modal-input" placeholder="Введіть півввісь">
+          <input name= "fill" type="checkbox"  class="hidden" id="fillellipse">
+          <label class="modal-checkbox" for="fillellipse">
+            Заповненювати еліпс: 
+            <span class="no">ні</span>
+            <span class="yes">так</span>
+          </label>
+          <p class="modal-example">| z - z<span class="small">0</span> | = R</p>
+        </div>
+        <button class="btn apply ellipse-modal_apply">Побудувати</button>   
+      </div>
+    </div>
+    <button class="btn close ellipse-modal_close"> &times; </button>
+  </div>
+  <div class="modal  hidden sector-modal">
+    <div class="modal-body">
+      <div class="modal-title">Побудова cектора</div>
+      <div class="modal-content">
+        <div class="modal-inputs-wrapper">
+          <input name= "real"       type="number" class="modal-input" placeholder="Введіть Re(z0)">   
+          <input name= "imagine"    type="number" class="modal-input" placeholder="Введіть Im(z0)">   
+          <input name= "radius"     type="number" class="modal-input" placeholder="Введіть R">
+          <input name= "startAngle" type="number" class="modal-input" placeholder="Введіть початковий кут">
+          <input name= "endAngle"   type="number" class="modal-input" placeholder="Введіть кінцевий кут">
+          <p class="modal-example">| z - z<span class="small">0</span> | = R</p>
+        </div>
+        <button class="btn apply sector-modal_apply">Побудувати</button>   
+      </div>
+    </div>
+    <button class="btn close sector-modal_close"> &times; </button>
+  </div>
+  <div class="modal hidden parabola-modal">
+    <div class="modal-body">
+      <div class="modal-title">Побудова параболи</div>
+      <div class="modal-content">
+        <div class="modal-inputs-wrapper">
+          <input name= "a" type="number" class="modal-input" placeholder="Введіть a">   
+          <input name= "b" type="number" class="modal-input" placeholder="Введіть b">   
+          <input name= "c" type="number" class="modal-input" placeholder="Введіть c">
+          <input name= "width" type="number" class="modal-input" placeholder="Вкажіть ширину проміжку визначення">
+
+          <p class="modal-example">y = a*x^2 + bx + c</p>
+        </div>
+        <button class="btn apply parabola-modal_apply">Побудувати</button>   
+      </div>
+    </div>
+    <button class="btn close parabola-modal_close"> &times; </button>
+  </div>
+
+  <div class="modal hidden hiperbola-modal">
+    <div class="modal-body">
+      <div class="modal-title">Побудова гіперболи</div>
+      <div class="modal-content">
+        <div class="modal-inputs-wrapper">
+          <input name= "a" type="number" class="modal-input" placeholder="Введіть a">   
+          <input name= "b" type="number" class="modal-input" placeholder="Введіть b" value="0">   
+          <input name= "c" type="number" class="modal-input" placeholder="Введіть c" value="0">
+          <input name= "size" type="number" class="modal-input" placeholder="Вкажіть розмір ">
+          <p class="modal-aditional-info">довжина проекції однієї вітки гіперболи на Ox</p>
+
+          <p class="modal-example">y = a/(x+c) + b</p>
+        </div>
+        <button class="btn apply hiperbola-modal_apply">Побудувати</button>   
+      </div>
+    </div>
+    <button class="btn close hiperbola-modal_close"> &times; </button>
+  </div>
+  <script src="./dist/app.js"></script>
+  <script src="./dist/interface.js"></script>
+</body>
+</html>
