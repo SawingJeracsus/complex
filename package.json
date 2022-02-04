@@ -1,0 +1,25 @@
+{
+  "devDependencies": {
+    "html-webpack-plugin": "^5.5.0",
+    "ts-loader": "^9.2.6",
+    "typescript": "^4.5.5",
+    "webpack-cli": "^4.9.2",
+    "webpack-dev-server": "^4.7.4"
+  },
+  "name": "complex",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "webpack-dev-server --mode development --allowed-hosts .ngrok.io"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SawingJeracsus/complex.git"
+  },
+  "author": "Sawinjer",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/SawingJeracsus/complex/issues"
+  },
+  "homepage": "https://github.com/SawingJeracsus/complex#readme",
+  "description": ""
+}

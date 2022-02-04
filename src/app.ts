@@ -1,592 +1,350 @@
-interface RenderConfig {
-  ctx: any;
-  padding: number;
-  size: number;
-  drawer: DrawerEngine;
-}
-interface DrawerEngineConfig {
-  size: number;
-  padding: number;
-}
-interface ICTXPayload  {
-  id: string;
-}
-function toRadians(deg: number){
-  return deg * Math.PI / 180
-}
-function toDeg(rad: number){
-  return rad / Math.PI * 180
-}
+import {DrawerEngine} from './engine'
+import { Line, Circle, Colorize, ComplexNumber, Ellipse, Sector, Parabola, Hiperbola } from './objects'
 
+const canvas: HTMLCanvasElement = document.querySelector("#canvas");
+const colorPicker: HTMLElement = document.querySelector("#color-picker");
+let ColorPicked = "#000";
+colorPicker.addEventListener("change", (e) => {
+  //@ts-ignore
+  ColorPicked = e.target.value;
+});
+const createElWithClass = (type: string, className: string) => {
+  const el = document.createElement(type);
+  el.classList.add(className);
+  return el;
+}; 2
 
-function delay(ms: number): any {
-  return new Promise((resolve: any, _: any) => {
-    setTimeout(() => {
-      resolve();
-    }, ms);
-  });
-}
-const calculatePos = (
-  x: number,
-  y: number,
-  size = 10,
-  padding = 0,
-  drawer: DrawerEngine
-): number[] => {
-  return [
-    (drawer.left + x) * size + padding,
-    (drawer.top - y) * size + padding,
-  ];
+const drawer = new DrawerEngine([], canvas, {
+  size: 60,
+  padding: 70,
+});
+const resize = () => {
+  let [minimalWidth, minimalHeight] = drawer.getSize();
+  canvas.width =
+    minimalWidth > window.innerWidth / 2 ? minimalWidth : window.innerWidth / 2;
+  canvas.height =
+    minimalHeight > (window.innerHeight / 3) * 2
+      ? minimalHeight
+      : (window.innerHeight / 3) * 2;
+  //   console.log("resize");
 };
+drawer.beforeInit = resize;
+drawer.init();
 
-function sin(a: number): number {
-  return Math.sin(a) + 1 - 1;
-}
-function cos(a: number): number {
-  return Math.cos(a) + 1 - 1;
-}
+class Modal {
+  el: HTMLElement;
+  private closeBtn: HTMLElement;
+  private applyBtn: HTMLElement;
+  private openButton: HTMLElement;
+  private subscribers: Function[] = [];
+  private inputsArray: any[] = [];
+  selector;
 
-class CTXObject {
-  type = "CTXObject";
-  public payload: ICTXPayload = {
-    id: Date.now().toString()
+  constructor(modal: string, openButtonselector: string) {
+    this.selector = modal;
+    const el: HTMLElement = document.querySelector(modal);
+    const openButton: HTMLElement = document.querySelector(openButtonselector);
+    const applyBtn: HTMLElement = document.querySelector(modal + "_apply");
+    const closeBtn: HTMLElement = document.querySelector(modal + "_close");
+
+    if (el) {
+      this.el = el;
+      this.applyBtn = applyBtn;
+      this.closeBtn = closeBtn;
+      this.openButton = openButton;
+    } else {
+      throw new Error(
+        "Selector invalid, element with same selector not exists!"
+      );
+    }
+
+    this.init();
   }
-
-  left = 0;
-  right = 0;
-  top = 0;
-  bottom = 0;
-
-  render({ ctx, padding, size, drawer }: RenderConfig): any | CTXObject {
-    throw new Error("Render method is not relized!");
+  static subscribeForAll(callback: Function, modals: Modal[]) {
+    for (let modal of modals) {
+      modal.subscribe(callback);
+    }
   }
-}
+  init() {
+    this.openButton.addEventListener("click", (e) => {
+      this.el.classList.remove("hidden");
+    });
+    this.closeBtn.addEventListener("click", (e) => {
+      this.el.classList.add("hidden");
+    });
+    this.applyBtn.addEventListener("click", (e) => {
+      this.inputsArray = [
+        ...document.querySelectorAll(this.selector + " input"),
+      ].map((input) => ({ name: input.getAttribute("name"), target: input }));
+      const inputs = {};
+      for (let input of this.inputsArray) {
+        // @ts-ignore
+        inputs[input.name] =
+          input.target.getAttribute("type") !== "checkbox"
+            ? input.target.value
+            : input.target.checked;
+      }
+      let success = true;
+      const breakFunc = (message: string) => {
+        alert(message);
+        success = false;
+      };
 
-class ComplexNumber extends CTXObject {
-  center = new Circle(this, 0.05, true);
-  constructor(
-    public real: number,
-    public imagine: number,
-    public showTitle: boolean = false
-  ) {
-    super();
-    this.left = this.center.left - this.center.radius;
-    this.right = this.center.right - this.center.radius;
-    this.top = this.center.top - this.center.radius;
-    this.bottom = this.center.bottom - this.center.radius;
-  }
-  render({ ctx, padding, size, drawer }: RenderConfig): any | CTXObject {
-    return this.center;
-  }
-}
-class ShapesArray extends CTXObject {
-  constructor(public readonly objects: CTXObject[]) {
-    super();
-
-    this.left = Math.ceil(
-      Math.max(...this.objects.map((ctxobj) => ctxobj.left))
-    );
-    this.left = this.left > 0 ? this.left : 1;
-
-    this.right = Math.ceil(
-      Math.max(...this.objects.map((ctxobj) => ctxobj.right))
-    );
-    this.right = this.right > 0 ? this.right : 1;
-
-    this.top = Math.ceil(Math.max(...this.objects.map((ctxobj) => ctxobj.top)));
-    this.top = this.top > 0 ? this.top : 1;
-
-    this.bottom = Math.ceil(
-      Math.max(...this.objects.map((ctxobj) => ctxobj.bottom))
-    );
-    this.bottom = this.bottom > 0 ? this.bottom : 1;
-  }
-  render(config: RenderConfig): void {
-    for (let obj of this.objects) {
-      if (obj.type === "CTXObject") {
-        config.drawer.callBackAfterRenderLoop = () => {};
-        let ctxObject = obj.render(config);
-        config.drawer.callBackAfterRenderLoop();
-        let type = ctxObject?.type;
-
-        while (type === "CTXObject") {
-          config.drawer.callBackAfterRenderLoop = () => {};
-          ctxObject = ctxObject.render(config);
-          config.drawer.callBackAfterRenderLoop();
-
-          type = ctxObject?.type;
+      for (let subscriber of this.subscribers) {
+        subscriber(inputs, breakFunc);
+      }
+      if (success) {
+        this.el.classList.add("hidden");
+        for (let input of this.inputsArray) {
+          //@ts-ignore
+          input.target.value = "";
+          input.target.checked = false;
         }
-      } else {
-        throw new Error("Expexting for CTXObject exemplar");
+      }
+    });
+  }
+
+  subscribe(callback: Function): void {
+    this.subscribers.push(callback);
+  }
+}
+
+interface ILayer {
+  id: number | string;
+  el: HTMLElement;
+}
+class LayersEngin {
+  private container: HTMLElement;
+  private counter: number = 0;
+
+  private layers: ILayer[] = [];
+
+  constructor(public containerSelector: string) {
+    const container: HTMLElement = document.querySelector(containerSelector);
+    if (container) {
+      this.container = container;
+    } else {
+      throw new Error(
+        "Hey!? i didn`t see any element in page with that selector bro!"
+      );
+    }
+  }
+  add(name: string, onRemove: Function, color = "#000"): number | string {
+    this.counter++;
+    const layerWrapper = this.container.appendChild(
+      document.createElement("div")
+    );
+    layerWrapper.classList.add("layer");
+    layerWrapper.setAttribute("data-id", this.counter.toString());
+
+    const wrapperName = createElWithClass("div", "name-wrapper");
+    const colorBlock = createElWithClass("div", "color");
+
+    colorBlock.setAttribute("style", `background-color: ${color};`);
+    wrapperName.appendChild(colorBlock);
+
+    const spanName = createElWithClass("span", "name");
+    spanName.innerText = name + " " + this.counter;
+    wrapperName.appendChild(spanName);
+
+    const buttonDelete = createElWithClass("button", "btn");
+    buttonDelete.classList.add("delete");
+    buttonDelete.innerText = "×";
+    buttonDelete.setAttribute("data-id", this.counter.toString());
+    buttonDelete.addEventListener("click", (e) => {
+      //@ts-ignore
+      const aditonal = this.remove(e.target.dataset.id);
+      onRemove({ ...aditonal, name });
+    });
+
+    layerWrapper.appendChild(wrapperName);
+    layerWrapper.appendChild(buttonDelete);
+    this.layers.push({
+      id: this.counter,
+      el: layerWrapper,
+    });
+
+    return this.counter;
+  }
+
+  remove(id: number | string): null | ILayer {
+    let aditional: null | ILayer;
+
+    for (let leyer of this.layers) {
+      if (leyer.id.toString() === id.toString()) {
+        aditional = leyer;
+        leyer.el.remove();
       }
     }
-  }
-}
-class Colorize extends CTXObject {
-  constructor(private CTXObject: CTXObject, private readonly color: string) {
-    super();
 
-    this.left = this.CTXObject.left;
-    this.right = this.CTXObject.right;
-    this.top = this.CTXObject.top;
-    this.bottom = this.CTXObject.bottom;
-  }
-  render(config: RenderConfig) {
-    const oldFillStyle = config.ctx.fillStyle;
-    const oldStrokeStyle = config.ctx.strokeStyle;
-
-    config.ctx.fillStyle = this.color;
-    config.ctx.strokeStyle = this.color;
-
-    let renderResult = this.CTXObject.render(config);
-    config.drawer.callBackAfterRenderLoop();
-    config.drawer.callBackAfterRenderLoop = () => {};
-
-    while (renderResult?.type === "CTXObject") {
-      renderResult = renderResult.render(config);
-      config.drawer.callBackAfterRenderLoop();
-      config.drawer.callBackAfterRenderLoop = () => {};
-    }
-
-    config.ctx.fillStyle = oldFillStyle;
-    config.ctx.strokeStyle = oldStrokeStyle;
-  }
-}
-class CTXText extends CTXObject {
-  constructor(
-    private text: string,
-    private complextPoint: ComplexNumber,
-    private textSize: number = 10
-  ) {
-    super();
-  }
-  render({ ctx, padding, size, drawer }: RenderConfig): any | CTXObject {
-    const temp = ctx.font;
-    ctx.font = this.textSize + "px sans-serif";
-
-    const [x, y] = calculatePos(
-      this.complextPoint.real,
-      this.complextPoint.imagine,
-      size,
-      padding,
-      drawer
-    );
-    ctx.fillText(this.text, x + this.textSize / 2, y + this.textSize);
-    return false;
+    this.layers = this.layers.filter((leyer) => leyer.id !== id);
+    return aditional;
   }
 }
 
-class Circle extends CTXObject {
-  constructor(
-    public readonly center: ComplexNumber,
-    public readonly radius: number,
-    public fill: boolean = false
-  ) {
-    super();
+const layers = new LayersEngin(".layers");
 
-    this.right = this.radius + this.center.real;
-    this.left =
-      this.center.real - this.radius < 0
-        ? Math.abs(this.center.real - this.radius)
-        : 0;
-    this.top = this.radius + this.center.imagine;
-    this.bottom =
-      this.center.imagine - this.radius < 0
-        ? Math.abs(this.center.imagine - this.radius)
-        : 0;
-  }
-  render({ ctx, padding, size, drawer }: RenderConfig): any | CTXObject {
-    ctx.beginPath();
-    const [x, y] = calculatePos(
-      this.center.real,
-      this.center.imagine,
-      size,
-      padding,
-      drawer
-    );
+const allModals = [
+  new Modal(".point-modal", ".add-point"),
+  new Modal(".circle-modal", ".add-circle"),
+  new Modal(".ellipse-modal", ".add-ellipse"),
+  new Modal(".sector-modal", ".add-sector"),
+  new Modal(".line-modal", ".add-line"),
+  new Modal(".parabola-modal", ".add-parabola"),
+  new Modal(".hiperbola-modal", ".add-hiperbola"),
+];
+const [
+  modalPoint,
+  modalCircle,
+  modalEllipse,
+  modalSector,
+  modalLine1,
+  modalParabola,
+  modalHiperbola,
+] = allModals;
 
-    ctx.arc(x, y, this.radius * size, 0, 2 * Math.PI);
+modalPoint.subscribe((data: any) => {
+  const obj = new Colorize(
+    new ComplexNumber(parseFloat(data.real), parseFloat(data.imagine)),
+    ColorPicked
+  );
+  drawer.appendObject(obj);
 
-    this.fill ? ctx.fill() : ctx.stroke();
-    if (this.fill) {
-      return new Colorize(new Circle(this.center, this.radius), "#000");
+  layers.add(
+    "Точка",
+    (data: any) => {
+      drawer.remove(obj);
+    },
+    ColorPicked
+  );
+});
+
+modalLine1.subscribe((data: any) => {
+  const obj = new Colorize(
+    new Line(
+      new ComplexNumber(parseFloat(data.real1), parseFloat(data.imagine1)),
+      new ComplexNumber(parseFloat(data.real2), parseFloat(data.imagine2)),
+      data.showEndBegin
+    ),
+    ColorPicked
+  );
+  drawer.appendObject(obj);
+  layers.add(
+    "Лінія",
+    (data: any) => {
+      drawer.remove(obj);
+    },
+    ColorPicked
+  );
+});
+modalCircle.subscribe((data: any) => {
+  const obj = new Colorize(
+    new Circle(
+      new ComplexNumber(parseFloat(data.real), parseFloat(data.imagine)),
+      parseFloat(data.radius),
+      data.fill
+    ),
+    ColorPicked
+  );
+
+  drawer.appendObject(obj);
+  layers.add(
+    data.fill ? "Круг" : "Коло",
+    (data: any) => {
+      drawer.remove(obj);
+    },
+    ColorPicked
+  );
+});
+
+modalEllipse.subscribe((data: any, breakFunc: Function) => {
+  for (let key in data) {
+    if (key !== "fill") {
+      data[key] = parseFloat(data[key]);
     }
   }
-}
-class Sector extends Circle{
-  constructor(
-    center: ComplexNumber,
-    readonly radius: number,
-    fill: boolean = false,
-    private readonly startAngle: number,
-    private readonly endAngle: number,
-  ){
-    super(center, radius, fill)
-
-    console.log(this);
-    this.startAngle = toRadians(this.startAngle) 
-    this.endAngle = toRadians(this.endAngle) 
-  }
-  render({ ctx, padding, size, drawer }: RenderConfig): any | CTXObject {
-    ctx.beginPath();
-    const [x, y] = calculatePos(
-      this.center.real,
-      this.center.imagine,
-      size,
-      padding,
-      drawer
+  if (data.vertex < data.covertex) {
+    breakFunc("Вісь повинна бути більшою за піввісь!");
+  } else {
+    const obj = new Colorize(
+      new Ellipse(
+        new ComplexNumber(data.real1, data.imagine1),
+        new ComplexNumber(data.real2, data.imagine2),
+        data.vertex,
+        data.covertex
+      ),
+      ColorPicked
     );
-
-    ctx.arc(x, y, this.radius * size, this.startAngle, this.endAngle);
-
-    this.fill ? ctx.fill() : ctx.stroke();
-    if (this.fill) {
-      // return new 
+    drawer.appendObject(obj);
+    layers.add(
+      "Еліпс",
+      (data: any) => {
+        drawer.remove(obj);
+      },
+      ColorPicked
+    );
+  }
+});
+modalSector.subscribe((data: any) => {
+  for (let key in data) {
+    if (key !== "fill") {
+      data[key] = parseFloat(data[key]);
     }
   }
-}
-class Ellipse extends CTXObject{
-  private center: ComplexNumber = new ComplexNumber(0, 0)
-  constructor(
-    private readonly focus1: ComplexNumber,
-    private readonly focus2: ComplexNumber,
-    private readonly vertex: number,
-    private readonly coVertex: number
-  ){
-    super()
-    this.center.real    = (this.focus1.real + this.focus2.real)/2
-    this.center.imagine = (this.focus1.imagine + this.focus2.imagine)/2
-    
-    this.right  = this.center.real + this.vertex > 0 ? this.center.real + this.vertex : 0
-    this.left   = this.center.real - this.vertex < 0 ? Math.abs(this.center.real - this.vertex) : 0
-
-    this.top    = this.center.imagine + this.coVertex > 0 ? this.center.imagine + this.coVertex : 0
-    this.bottom = this.center.imagine - this.coVertex < 0 ? Math.abs(this.center.imagine - this.coVertex) : 0  
-  }
-  render({ ctx, padding, size, drawer }: RenderConfig): any | CTXObject{
-    ctx.beginPath();
-    const [x, y] = calculatePos(
-      this.center.real,
-      this.center.imagine,
-      size,
-      padding,
-      drawer
-    );
- 
-    const tan = Math.abs(this.focus1.imagine - this.focus2.imagine) / Math.abs(this.focus1.real - this.focus2.real)
-    const angle =  (this.focus1.imagine - this.focus2.imagine) * (this.focus1.real - this.focus2.real) < 0 ? Math.atan( tan ) : -Math.atan( tan );
-      
-    ctx.ellipse(x, y, this.vertex*size, this.coVertex*size, angle ,0, 2 * Math.PI)
-    ctx.stroke()
-
-    return new ShapesArray([this.focus2, new Colorize(this.focus1, '#f00')])
-  }
-}
-class Line extends CTXObject {
-  constructor(
-    public readonly begin: ComplexNumber,
-    public readonly end: ComplexNumber,
-    private showEndAndBegin: boolean = false
-  ) {
-    super();
-
-    const maximal = Math.max(this.begin.real, this.end.real);
-    this.right = maximal > 0 ? maximal : 1;
-
-    const minimal = Math.min(this.begin.real, this.end.real);
-    this.left = minimal < 0 ? Math.abs(minimal) : 1;
-
-    const maximalY = Math.max(this.begin.imagine, this.end.imagine);
-    this.top = maximalY > 0 ? maximalY : 1;
-
-    const minimalY = Math.min(this.begin.real, this.end.real);
-    this.bottom = minimalY < 0 ? Math.abs(minimalY) : 1;
-  }
-  render({ ctx, size, padding, drawer }: RenderConfig): void | ShapesArray {
-    ctx.beginPath();
-    ctx.moveTo(
-      ...calculatePos(
-        this.begin.real,
-        this.begin.imagine,
-        size,
-        padding,
-        drawer
-      )
-    );
-    ctx.lineTo(
-      ...calculatePos(this.end.real, this.end.imagine, size, padding, drawer)
-    );
-
-    ctx.stroke();
-    if (this.showEndAndBegin) {
-      return new ShapesArray([this.begin, this.end]);
-    }
-  }
-}
-class Parabola extends CTXObject {
-  vertex: ComplexNumber;
-  constructor(
-    private width: number,
-    private readonly a: number,
-    private readonly b: number = 0,
-    private readonly c: number = 0
-  ) {
-    super();
-    const xVertex = (-1 * this.b) / (2 * this.a);
-    this.vertex = new ComplexNumber(xVertex, this.calculateY(xVertex));
-
-    this.right = xVertex + width / 2;
-    this.left = xVertex - width / 2;
-    this.top =
-      this.a > 0 ? this.calculateY(xVertex + width / 2) : this.vertex.imagine;
-    this.bottom =
-      this.a > 0 ? this.vertex.imagine : this.calculateY(xVertex + width / 2);
-
-    this.right = this.right > 0 ? this.right : 1;
-    this.left = this.left < 0 ? Math.abs(this.left) : 1;
-    this.top = this.top > 0 ? this.top : 1;
-    this.bottom = this.bottom < 0 ? Math.abs(this.bottom) : 1;
-  }
-  calculateY(x: number): number {
-    return this.a * x ** 2 + this.b * x + this.c;
-  }
-  render(config: RenderConfig): ShapesArray {
-    const objects = [];
-    for (let i = 1; i <= 40; i++) {
-      const x = this.vertex.real - this.width / 2 + (this.width / 40) * i;
-      const xPrev =
-        this.vertex.real - this.width / 2 + (this.width / 40) * (i - 1);
-
-      objects.push(
-        new Line(
-          new ComplexNumber(x, this.calculateY(x)),
-          new ComplexNumber(xPrev, this.calculateY(xPrev))
-        )
-      );
-    }
-
-    return new ShapesArray(objects);
-  }
-}
-class Hiperbola extends CTXObject {
-  constructor(
-    private size: number,
-    private a: number = 1,
-    private b: number = 0,
-    private c: number = 0
-  ) {
-    super();
-    this.right = this.size - this.c;
-    this.left = this.size + this.c;
-
-    this.top = this.size * a + this.b;
-    this.bottom = this.size * a - this.b;
-    // y = a/(x+c) + b
-  }
-  calculateY(x: number): number {
-    return this.a / (x + this.c) + this.b;
-  }
-  render({ ctx, size, padding, drawer }: RenderConfig): ShapesArray {
-    const objects: CTXObject[] = [];
-    for (let i = 1; i <= 40; i++) {
-      const x = this.size - this.c - (this.size / 20) * i;
-      const xPrev = this.size - this.c - (this.size / 20) * (i - 1);
-
-      if (x != -this.c && xPrev != -this.c) {
-        objects.push(
-          new Line(
-            new ComplexNumber(x, this.calculateY(x)),
-            new ComplexNumber(xPrev, this.calculateY(xPrev))
-          )
-        );
-      }
-    }
-    return new ShapesArray(objects);
-  }
-}
-
-class DrawerEngine {
-  private padding = 70;
-  private size = 60;
-
-  left = 0;
-  right = 0;
-  top = 0;
-  bottom = 0;
-  private ctx;
-
-  constructor(
-    private objects: CTXObject[],
-    private canvas: any,
-    config: DrawerEngineConfig
-  ) {
-    this.ctx = this.canvas.getContext("2d");
-    this.padding = config.padding;
-    this.size = config.size;
-    this.init();
-  }
-  get objectsList(){
-    return [...this.objects]
-  }
-  appendObject(object: CTXObject) {
-    this.objects.push(object);
-    this.clear();
-    this.init();
-  }
-  remove(object: CTXObject): void{
-    this.objects = this.objects.filter(el => el.payload.id !== object.payload.id)
-    this.clear();
-    this.init();
-  }
-  getSize(): number[] {
-    return [
-      this.size * (this.left + this.right) + this.padding * 2,
-      this.size * (this.top + this.bottom) + this.padding * 2,
-    ];
-  }
-  setConfig(config: DrawerEngineConfig) {
-    this.padding = config.padding;
-    this.size = config.size;
-    this.clear();
-    this.init();
-  }
-  setOjects(objects: CTXObject[]){
-    this.objects = objects
-    this.clear()
-    this.init()
-  }
-  clear(): void {
-    const oldColor = this.ctx.fillStyle;
-    this.ctx.fillStyle = "#fff";
-    this.ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
-    this.ctx.fillStyle = oldColor;
-  }
-  beforeInit() {
-    // Цей метод можна змінити за бажанням, він викликажться кожен раз перед тим як щось почати малювати
-    // ВАЖЛИВО!!! Саме перед тим як малювати, а отже сам екзеспляр класу обрахує свою ширину і висоту тоді іде виконає метод і лише тоді починає щось малювати!!!
-  }
-  init(): void {
-    this.left = Math.ceil(
-      Math.max(...this.objects.map((ctxobj) => ctxobj.left))
-    );
-    this.left = this.left > 0 ? this.left : 1;
-
-    this.right = Math.ceil(
-      Math.max(...this.objects.map((ctxobj) => ctxobj.right))
-    );
-    this.right = this.right > 0 ? this.right : 1;
-
-    this.top = Math.ceil(Math.max(...this.objects.map((ctxobj) => ctxobj.top)));
-    this.top = this.top > 0 ? this.top : 1;
-
-    this.bottom = Math.ceil(
-      Math.max(...this.objects.map((ctxobj) => ctxobj.bottom))
-    );
-    this.bottom = this.bottom > 0 ? this.bottom : 1;
-
-    this.ctx.font = Math.floor(this.size / 5) + "px sans-serif";
-
-    this.beforeInit(); // Що це? Дивитись трохи вище!
-    this.initRender(); //!!!!
-
-    for (let i: number = 1; i <= this.left; i++) {
-      this.drawTLineXAxis(
-        this.padding + this.left * this.size - i * this.size,
-        this.padding + this.left * this.size - (i - 1) * this.size,
-        "-" + i
-      );
-    }
-    for (let i: number = 1; i <= this.right; i++) {
-      this.drawTLineXAxis(
-        this.padding + this.left * this.size + i * this.size,
-        this.padding + this.left * this.size + (i - 1) * this.size,
-        i
-      );
-    }
-    for (let i: number = 1; i <= this.top; i++) {
-      this.drawTLineYAxis(
-        this.padding + this.top * this.size - i * this.size,
-        this.padding + this.top * this.size - (i - 1) * this.size,
-        i + "i"
-      );
-    }
-    for (let i: number = 1; i <= this.bottom; i++) {
-      this.drawTLineYAxis(
-        this.padding + this.top * this.size + i * this.size,
-        this.padding + this.top * this.size + (i - 1) * this.size,
-        "-" + i + "i"
-      );
-    }
-  }
-  callBackAfterRenderLoop(): void | ShapesArray {} //цей метод можна задати у методі рендер CTXObject екзерляра, він виконається після закінчення рендеру коипоненту
-  initRender(): void {
-    for (let obj of this.objects) {
-      if (obj.type === "CTXObject") {
-        this.callBackAfterRenderLoop = (): void | ShapesArray => {};
-        let ctxObject = obj.render({
-          ctx: this.ctx,
-          padding: this.padding,
-          size: this.size,
-          drawer: this,
-        });
-        this.callBackAfterRenderLoop();
-        let type = ctxObject?.type;
-
-        while (type === "CTXObject") {
-          this.callBackAfterRenderLoop = (): void | ShapesArray => {};
-          ctxObject = ctxObject.render({
-            ctx: this.ctx,
-            padding: this.padding,
-            size: this.size,
-            drawer: this,
-          });
-          type = ctxObject?.type;
-          this.callBackAfterRenderLoop();
-        }
-      } else {
-        throw new Error("Expexting for CTXObject exemplar");
-      }
-    }
-  }
-
-  drawTLineXAxis(x: number, xPrev: number, i: string | number): void {
-    this.ctx.beginPath();
-    this.ctx.moveTo(x, this.top * this.size + this.padding - this.size / 5);
-    this.ctx.lineTo(x, this.top * this.size + this.padding + this.size / 5);
-
-    this.ctx.stroke();
-
-    this.ctx.beginPath();
-
-    this.ctx.moveTo(xPrev, this.top * this.size + this.padding);
-    this.ctx.lineTo(x, this.top * this.size + this.padding);
-
-    this.ctx.stroke();
-
-    this.ctx.fillText(
-      i,
-      x,
-      this.top * this.size + this.padding + this.size / 2
-    );
-    this.ctx.stroke();
-  }
-  drawTLineYAxis = (y: number, yPrev: number, i: number | string) => {
-    this.ctx.beginPath();
-    this.ctx.moveTo(this.left * this.size + this.padding - this.size / 5, y);
-    this.ctx.lineTo(this.left * this.size + this.padding + this.size / 5, y);
-
-    this.ctx.stroke();
-
-    this.ctx.moveTo(this.left * this.size + this.padding, yPrev);
-    this.ctx.lineTo(this.left * this.size + this.padding, y);
-
-    this.ctx.stroke();
-
-    this.ctx.fillText(
-      i,
-      this.left * this.size + this.padding + this.size / 2,
-      y
-    );
-    this.ctx.stroke();
-  };
-}
+  const obj = new Colorize(
+    new Sector(
+      new ComplexNumber(data.real, data.imagine),
+      data.radius,
+      false,
+      data.startAngle,
+      data.endAngle
+    ),
+    ColorPicked
+  );
+  drawer.appendObject(obj);
+  layers.add(
+    "Сектор",
+    (data: any) => {
+      drawer.remove(obj);
+    },
+    ColorPicked
+  );
+});
+modalParabola.subscribe((data: any) => {
+  const obj = new Colorize(
+    new Parabola(
+      parseFloat(data.width),
+      parseFloat(data.a),
+      parseFloat(data.b),
+      parseFloat(data.c)
+    ),
+    ColorPicked
+  );
+  drawer.appendObject(obj);
+  layers.add(
+    "Парабола",
+    (data: any) => {
+      drawer.remove(obj);
+    },
+    ColorPicked
+  );
+});
+modalHiperbola.subscribe((data: any) => {
+  const obj = new Colorize(
+    new Hiperbola(
+      parseFloat(data.size),
+      parseFloat(data.a),
+      parseFloat(data.b),
+      parseFloat(data.c)
+    ),
+    ColorPicked
+  );
+  drawer.appendObject(obj);
+  layers.add(
+    "Гіпербола",
+    (data: any) => {
+      drawer.remove(obj);
+    },
+    ColorPicked
+  );
+});
